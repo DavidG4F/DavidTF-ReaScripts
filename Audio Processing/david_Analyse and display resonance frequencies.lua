@@ -524,4 +524,3 @@ reaper.PreventUIRefresh(1)
 mainWindow()
 reaper.PreventUIRefresh(-1)
 reaper.UpdateArrange()
-
