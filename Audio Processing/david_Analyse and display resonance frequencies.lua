@@ -2,7 +2,7 @@
 --@author david
 --@version 1.1
 --@changelog
---  Modify librairy path scan
+--  Initial script
 --@about
 --  Import the selected clip and analyse frequencies to find resonances
 --  Some slider to tweak analyse parameters
@@ -23,12 +23,12 @@ local info = debug.getinfo(1,'S')
 local scriptPath = info.source:match[[^@?(.*[\\/])[^\\/]-$]]
 
 reaper.SetExtState("DavidTF", "fftPath", scriptPath, true)
---reaper.MB("FFT's library path is now set to:\n" .. scriptPath, "DavidTF", 0)
+reaper.ShowConsoleMsg("FFT's library path is now set to:\n" .. scriptPath)
 
 -- GET
 local GUIfftPath = reaper.GetExtState("DavidTF", "fftPath")
 if not GUIfftPath or GUIfftPath == "" then
-    reaper.MB("Couldn't load the FFT library !", "Whoops!", 0)
+    reaper.MB("\nCouldn't load the FFT library !", "Whoops!", 0)
     return
 end
 
@@ -36,6 +36,7 @@ local function add_to_package_path(subpath)
     package.path = subpath .. "ressources/?.lua;" .. package.path
 end
 
+reaper.ShowConsoleMsg("\nGet package :\n" .. GUIfftPath)
 add_to_package_path(GUIfftPath)
 
 
@@ -403,18 +404,38 @@ function GetEqPluginID(item, fxName)
     end
 end
 
+function GetEqPresetID(item)
+    take = reaper.GetActiveTake(item)
+    _, numberOfPresets = reaper.TakeFX_GetPresetIndex(take, fxIndex)
+    for i = 0, numberOfPresets - 1 do
+        _, presetName = reaper.TakeFX_GetPreset(take, i)
+        
+        reaper.ShowConsoleMsg(presetName)
+        
+        if string.find(presetName, "User 1 Band Pass 1000") then
+            return i
+        end
+    end 
+end
+
 function AddTakeEQ(item, freq)
 
     take = reaper.GetActiveTake(item)
     
     fxIndex = reaper.TakeFX_AddByName(take, "ReaEq", 1)
     
-    reaper.TakeFX_SetPreset(take, fxIndex, "User 1 Band Pass 1000")
+    success = reaper.TakeFX_SetPreset(take, fxIndex, "User 1 Band Pass 1000")
+    if sucess == false then
+        reaper.ShowConsoleMsg("Preset not find ! please import ReaEq preset !")
+    end
     
     --freqClamped = InverseLerp(freq, 20, 20000)
     
     reaper.TakeFX_SetParam(take, 0, 0, freq) -- Set Frequency
     reaper.TakeFX_SetEnabled(take, fxIndex, false)
+    
+    --Test
+    reaper.ShowConsoleMsg("\n"..tostring(GetEqPresetID(selectedItem, fxIndex)))
 end
 
 function SetTakeEQ(item, freq, eqID)
@@ -467,6 +488,10 @@ end
 
 function ImportAudioClip()
     if reaper.CountSelectedMediaItems(0) > 0 then
+    
+        if selectedItem ~= nil and fx_index ~= nil then
+            DeletePlugin(selectedItem, fx_index)
+        end
     
         selectedItem = (reaper.GetSelectedMediaItem(0,0)) -- Store selected item for all the script
         -- Create a signal from media item
